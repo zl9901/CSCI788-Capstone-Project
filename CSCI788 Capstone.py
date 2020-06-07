@@ -13,6 +13,7 @@ from gensim import corpora, models
 from gensim.utils import simple_preprocess
 from gensim.parsing.preprocessing import STOPWORDS
 from nltk.stem import WordNetLemmatizer,SnowballStemmer
+from sklearn.feature_extraction.text import TfidfVectorizer
 from nltk.stem.porter import *
 from operator import itemgetter
 import matplotlib.pyplot as plt
@@ -24,7 +25,11 @@ from sklearn.metrics import silhouette_samples, silhouette_score
 from wordcloud import WordCloud, STOPWORDS
 import matplotlib.pyplot as plt
 import csv
+import xlsxwriter
 import random
+import re
+import xlrd
+from sklearn.svm import SVR
 
 import tensorflow as tf
 import tensorflow_hub as hub
@@ -35,6 +40,7 @@ from tensorflow.keras.models import Model
 # For example, running this (by clicking run or pressing Shift+Enter) will list all files under the input directory
 
 import os
+from BERT_Implementation import *
 
 # %% [code]
 # clean up data
@@ -73,11 +79,10 @@ def preprocess_data():
     related_words = ['diagnostic', 'diagnostics', 'symptomatic', 'diagnosing', 'diagnosis', 'clinical',
                      'diagnose', 'diagnoses', 'detection', 'screening', 'analytical', 'assessment',
                     'prognosis', 'surveillance', 'monitoring', 'reconnaissance']
-    keywords_match = []
-    keywords_no_match = []
-    corona_pos_all_text = []
+    spreadsheet_match = []
+    corona_abstract_all_text = []
+    corona_body_all_text = []
 
-    keywords_cnt = 0
     keywords_list = []
 
     """
@@ -88,7 +93,8 @@ def preprocess_data():
             #print(os.path.join(dirname, filename))
 
             topic_related = False
-            keywords_related = False
+            # this variable is used to determine how many sections may exist
+            author_cnt=0
             if i % 1000 == 0:
                 print ("Working (number %d)..." % i)
 
@@ -96,7 +102,7 @@ def preprocess_data():
             This is for test purpose
             """
             # if i==1000:
-            #     return corona_pos_all_text, corona_info, keywords_cnt, keywords_list
+            #     return corona_body_all_text, corona_abstract_all_text, spreadsheet_match, keywords_list
 
             """
             only load json files
@@ -113,42 +119,40 @@ def preprocess_data():
                 try:
                     abstract_text = ' '.join([x['text'] for x in j['abstract']])
                 except:
-                    abstract_text = ""
+                    abstract_text = ''
 
                 """
                 extract all the keywords
                 """
                 tmp=''
-                i+=1
-                # cnt is used to count there exists how many keyword sections
-                cnt=0
+                name = ''
                 # d represents each individual dictionary
                 # j['body_text'] is a python list which contains many dictionaries
                 for d in j['body_text']:
                     # preprocess the data which will bu put in csv file
-                    name = ''
-                    for dic in j['metadata']['authors']:
-                        name += dic['first'] + ' ' + dic['last']
-                        name += ', '
-                    name = name[:-2]
+
+                    if author_cnt<1:
+                        for dic in j['metadata']['authors']:
+                            name += dic['first'] + ' ' + dic['last']
+                            name += ', '
+                        name = name[:-2]
+                        author_cnt+=1
+
 
                     if d['section']=='Keywords':
-                        cnt+=1
                         tmp+=d['text']
-                        keywords_cnt+=1
                         keywords_list.append(tmp)
-                        if cnt==1:
-                            keywords_match.append([j['paper_id'], j['metadata']['title'], name, i, 1])
-                        keywords_related=True
-                if not keywords_related:
-                    keywords_no_match.append([j['paper_id'], j['metadata']['title'], name, i, 0])
+
+                spreadsheet_match.append([j['paper_id'], j['metadata']['title'], name, i, 1])
+
+                i+=1
 
 
                 """
                 body text and abstract consist the whole body text
                 """
                 body_text = ' '.join(x['text'] for x in j['body_text'])
-                body_text += " " + abstract_text
+                body_text += ' ' + abstract_text
 
                 """
                 for related_word in related_words:
@@ -159,12 +163,16 @@ def preprocess_data():
                     if abstract_text:
                         corona_pos_all_text.append(abstract_text)
                 """
+
+                # append abstract content
                 if abstract_text:
                     k+=1
-                    corona_pos_all_text.append(abstract_text)
+                    corona_abstract_all_text.append(abstract_text)
+                # append body text content
+                corona_body_all_text.append(body_text)
         print(i)
         print(k)
-    return corona_pos_all_text, keywords_match, keywords_no_match, keywords_cnt, keywords_list
+    return corona_body_all_text, corona_abstract_all_text, spreadsheet_match, keywords_list
 
 
 
@@ -198,8 +206,9 @@ def word_cloud_advanced(corona_pos_all_text):
 
 
 
-def generate_histogram(corona_pos_all_text):
-    corona_hist = [len(preprocess_stem_clean(x)) for x in corona_pos_all_text]
+def generate_histogram(corona_body_all_text):
+    # corona_hist = [len(preprocess_stem_clean(x)) for x in corona_body_all_text]
+    corona_hist = [len(re.findall(r'\w+', x))  for x in corona_body_all_text]
     plt.hist(corona_hist,bins='auto',color='#0504aa',alpha=0.7)
     # plt.bar([i for i in range(len(corona_pos_all_text))], corona_pos_all_text)
     plt.xlabel('Number of words')
@@ -208,129 +217,159 @@ def generate_histogram(corona_pos_all_text):
     plt.show()
 
 
+def initial_spreadsheet(spreadsheet_match):
+    # match_shuffled = random.sample(spreadsheet_match, len(spreadsheet_match))[:100]
 
-def generate_csv(keywords_match,keywords_no_match):
-    match_shuffled = random.sample(keywords_match, len(keywords_match))[:100]
-    no_match_shuffled = random.sample(keywords_no_match, len(keywords_no_match))[:100]
+    workbook=xlsxwriter.Workbook('spreadsheet.xlsx')
+    worksheet=workbook.add_worksheet('My sheet')
+
+    header=['paper_id','title','authors','paper_number','label']
+    for k in range(len(header)):
+        worksheet.write(0,k,header[k])
+
+    for i in range(1,201):
+        for j in range(len(spreadsheet_match[0])):
+            worksheet.write(i,j,spreadsheet_match[i-1][j])
+    workbook.close()
+
+
+
+
+def initial_csv(spreadsheet_match):
+
+    # no_match_shuffled = random.sample(keywords_no_match, len(keywords_no_match))[:100]
+    spreadsheet_match=spreadsheet_match[:200]
 
     file=open('labels.csv','w+',newline='',encoding='utf-8')
     # identifying header
-    header=[['paper_id','title','authors','paper_number','keyword_match']]
+    header=[['paper_id','title','authors','paper_number','label']]
 
     # writing data row-wise into the csv file
     with file:
         write=csv.writer(file)
         write.writerows(header)
-        write.writerows(match_shuffled)
-        write.writerows(no_match_shuffled)
+        write.writerows(spreadsheet_match)
+
+
+
+"""
+dimension reduction
+"""
+def generate_tfidf(corona_body_all_text):
+    corpus=[]
+    for text in corona_body_all_text:
+        corpus.append(' '.join(text))
+
+    vectorizer=TfidfVectorizer(max_features=300)
+    corpus_matrix=vectorizer.fit_transform(corpus)
+    print(corpus_matrix.shape)
+    # the most representative top 5000 words in corona_body_all_text
+    word_feature_list=vectorizer.get_feature_names()
+    corpus_matrix=corpus_matrix.toarray()
+    return corpus_matrix,word_feature_list
+
+"""
+return the labels and number of specific paper
+"""
+def generate_labels():
+    y=[]
+    indices=[]
+    loc = ('labels.xlsx')
+
+    wb = xlrd.open_workbook(loc)
+    sheet = wb.sheet_by_index(0)
+    sheet.cell_value(0, 0)
+
+    # return labels and number of the paper
+    for i in range(1,sheet.nrows):
+        y.append(int(sheet.cell_value(i, 4)))
+        indices.append(int(sheet.cell_value(i,3)))
+    return y,indices
+
+"""
+go through svm iteration
+"""
+def generate_SVM(corpus_matrix,y,indices,spreadsheet_match):
+    svr_rbf=SVR(kernel='rbf')
+    X=[]
+    print(indices)
+    for i in range(len(corpus_matrix)):
+        if i in indices:
+            # train on 200 papers
+            X.append(corpus_matrix[i])
+    # predict on the entire dataset
+    y_score_rbf=svr_rbf.fit(X,y).predict(corpus_matrix)
+
+    # return index of a sorted list
+    sorted_indices=sorted(range(len(y_score_rbf)),key=lambda k:y_score_rbf[k])
+
+
+    # this should be done manually
+    user_define=indices[:]
+
+    subtract_indices=[]
+    for val in sorted_indices:
+        if val not in user_define:
+            subtract_indices.append(val)
+
+    # get top 10%, bottom 10% and middle 10%
+    res=[]
+    res+=subtract_indices[:67]
+    res+=subtract_indices[-66:]
+    res+=subtract_indices[len(sorted_indices)//2:len(sorted_indices)//2+33]
+    res+=subtract_indices[len(sorted_indices)//2-33:len(sorted_indices)//2]
+
+    print('This is the new generated indices that need to be recorded')
+    print(res)
+
+    workbook=xlsxwriter.Workbook('spreadsheet_svm.xlsx')
+    worksheet=workbook.add_worksheet('My sheet')
+
+    # rewrite a file, this is different from the initial one
+    header=['paper_id','title','authors','paper_number','label']
+    for k in range(len(header)):
+        worksheet.write(0,k,header[k])
+
+    for i in range(len(res)):
+        for j in range(len(spreadsheet_match[0])):
+            worksheet.write(i,j,spreadsheet_match[res[i]][j])
+    workbook.close()
+
 
 
 """
-generate masks based on the original BERT
+data preprocessing and wordcloud operation
 """
-
-def get_masks(tokens, max_seq_length):
-    """Mask for padding"""
-    if len(tokens)>max_seq_length:
-        raise IndexError("Token length more than max seq length!")
-    return [1]*len(tokens) + [0] * (max_seq_length - len(tokens))
-
-"""
-generate segments based on the original BERT
-"""
-
-def get_segments(tokens, max_seq_length):
-    """Segments: 0 for the first sequence, 1 for the second"""
-    if len(tokens)>max_seq_length:
-        raise IndexError("Token length more than max seq length!")
-    segments = []
-    current_segment_id = 0
-    for token in tokens:
-        segments.append(current_segment_id)
-        if token == "[SEP]":
-            current_segment_id = 1
-    return segments + [0] * (max_seq_length - len(tokens))
-
-"""
-generate embeddings based on the original BERT
-"""
-def get_ids(tokens, tokenizer, max_seq_length):
-    """Token ids from Tokenizer vocab"""
-    token_ids = tokenizer.convert_tokens_to_ids(tokens)
-    input_ids = token_ids + [0] * (max_seq_length-len(token_ids))
-    return input_ids
-
-
-def generate_bert(corona_pos_all_text):
-    FullTokenizer = bert.bert_tokenization.FullTokenizer
-
-    """
-    input token ids (tokenizer converts tokens using vocab file)
-    input masks (1 for useful tokens, 0 for padding)
-    segment ids (for 2 text training: 0 for the first one, 1 for the second one)
-    """
-
-    max_seq_length = 25000  # Your choice here.
-    input_word_ids = tf.keras.layers.Input(shape=(max_seq_length,), dtype=tf.int32,
-                                           name="input_word_ids")
-    input_mask = tf.keras.layers.Input(shape=(max_seq_length,), dtype=tf.int32,
-                                       name="input_mask")
-    segment_ids = tf.keras.layers.Input(shape=(max_seq_length,), dtype=tf.int32,
-                                        name="segment_ids")
-
-    bert_layer = hub.KerasLayer("https://tfhub.dev/tensorflow/bert_en_uncased_L-12_H-768_A-12/1",
-                                trainable=True)
-
-    """
-    pooled_output of shape [batch_size,768] with representations for the entire input sequences
-    sequence_output of shape [batch_size,max_seq_length,768] with representations for each input token (in context)
-    """
-
-    pooled_output, sequence_output = bert_layer([input_word_ids, input_mask, segment_ids])
-
-    model = Model(inputs=[input_word_ids, input_mask, segment_ids], outputs=[pooled_output, sequence_output])
-
-
-    """
-    convert to numpy array
-    convert to all lowercase
-    tokenizer now has above two properties
-    """
-    vocab_file = bert_layer.resolved_object.vocab_file.asset_path.numpy()
-    do_lower_case = bert_layer.resolved_object.do_lower_case.numpy()
-    tokenizer = FullTokenizer(vocab_file, do_lower_case)
-
-    embeddings_info=[]
-    j=0
-    for text in corona_pos_all_text:
-        if j % 1000 == 0:
-            print("Tokenizing (number %d)..." % j)
-
-        stokens = tokenizer.tokenize(text)
-        if len(stokens)>=25000:
-            continue
-        j+=1
-        stokens = ["[CLS]"] + stokens + ["[SEP]"]
-
-        input_ids = get_ids(stokens, tokenizer, max_seq_length)
-        input_masks = get_masks(stokens, max_seq_length)
-        input_segments = get_segments(stokens, max_seq_length)
-
-        embeddings_info.append(input_ids)
-
-    return embeddings_info
-
-
-corona_pos_all_text, keywords_match, keywords_no_match, keywords_cnt, keywords_list = preprocess_data()
-print('The total number of documents is '+str(len(corona_pos_all_text)))
-print('The total number of matches is '+str(len(keywords_match)+len(keywords_no_match)))
-print('The total number of documents which contain keywords is '+str(keywords_cnt))
+corona_body_all_text, corona_abstract_all_text, spreadsheet_match, keywords_list = preprocess_data()
+print('The total number of documents is '+str(len(corona_body_all_text)))
+print('The total number of items in spreadsheet is '+str(len(spreadsheet_match)))
+print('The total number of documents which contain keywords is '+str(len(keywords_list)))
 keywords_all_text = [preprocess_stem_clean(x) for x in keywords_list]
 word_cloud_advanced(keywords_all_text)
 
-generate_histogram(corona_pos_all_text)
-generate_csv(keywords_match,keywords_no_match)
 
-embeddings_info=generate_bert(corona_pos_all_text)
-print(len(embeddings_info))
-print(len(embeddings_info[0]))
+"""
+dimension reduction
+"""
+#generate_histogram(corona_body_all_text)
+body_all_text = [preprocess_stem_clean(x) for x in corona_body_all_text]
+corpus_matrix,word_feature_list=generate_tfidf(body_all_text)
+print('dimensional reduction is done')
+
+
+"""
+spreadsheet visualization
+"""
+# initial_csv(spreadsheet_match)
+# initial_spreadsheet(spreadsheet_match)
+
+y,indices=generate_labels()
+generate_SVM(corpus_matrix,y,indices,spreadsheet_match)
+
+
+"""
+BERT  Algorithm Implementation
+"""
+# embeddings_info=generate_bert(corona_abstract_all_text)
+# print(len(embeddings_info))
+# print(len(embeddings_info[0]))
