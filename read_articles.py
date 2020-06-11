@@ -3,9 +3,12 @@
 
 import json as js
 import os
+import xlrd
 
 def read_articles():
-    i = 0
+    i = -1
+    # input the number here
+    ref = 28322
     """
     walk through all the files under specific directory
     """
@@ -13,9 +16,10 @@ def read_articles():
         for filename in filenames:
             #print(os.path.join(dirname, filename))
 
+            i += 1
+            if i!=ref:
+                continue
 
-            if i % 1000 == 0:
-                print ("Working (number %d)..." % i)
 
             """
             only load json files
@@ -39,14 +43,13 @@ def read_articles():
                 name = ''
                 # d represents each individual dictionary
                 # j['body_text'] is a python list which contains many dictionaries
-                for d in j['body_text']:
-                    # preprocess the data which will bu put in csv file
-                    if cnt<1:
-                        for dic in j['metadata']['authors']:
-                            name += dic['first'] + ' ' + dic['last']
-                            name += ', '
-                        name = name[:-2]
-                        cnt+=1
+
+                if cnt<1:
+                    for dic in j['metadata']['authors']:
+                        name += dic['first'] + ' ' + dic['last']
+                        name += ', '
+                    name = name[:-2]
+                    cnt+=1
 
 
 
@@ -57,7 +60,7 @@ def read_articles():
                 body_text += ' ' + abstract_text
 
                 # use i to print
-                if i==199:
+                if i==ref:
                     print('authors are ' + name)
                     if abstract_text:
                         print(abstract_text)
@@ -65,10 +68,25 @@ def read_articles():
                         print(body_text)
                 # use i to read specific article
                     exit()
-                i+=1
+
     return
 
+def extract_columns():
 
-read_articles()
+    index=[]
+    loc = ('labels.xlsx')
+
+    wb = xlrd.open_workbook(loc)
+    sheet = wb.sheet_by_index(0)
+    sheet.cell_value(0, 0)
+
+    # return labels and number of the paper
+    for i in range(1,sheet.nrows):
+        index.append(int(sheet.cell_value(i, 3)))
+    return index
+
+# read_articles()
+# read_articles method will exit the whole program in the middle process
+print(len(set(extract_columns())))
 
 
