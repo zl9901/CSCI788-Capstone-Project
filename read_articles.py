@@ -85,8 +85,8 @@ def extract_columns():
         index.append(int(sheet.cell_value(i, 3)))
     return index
 
-# read_articles()
+read_articles()
 # read_articles method will exit the whole program in the middle process
-print(len(set(extract_columns())))
+# print(len(set(extract_columns())))
 
 
