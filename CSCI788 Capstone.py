@@ -107,8 +107,8 @@ def preprocess_data():
             """
             This is for test purpose
             """
-            if i==1000:
-                return corona_body_all_text, corona_abstract_all_text, spreadsheet_match, keywords_list
+            # if i==1000:
+            #     return corona_body_all_text, corona_abstract_all_text, spreadsheet_match, keywords_list
 
             """
             only load json files
@@ -328,6 +328,31 @@ def grid_search(corpus_matrix,y,indices,spreadsheet_match):
     # this yields the minimum and maximum value of svm regressor output
     print(str(min(y_score_rbf)) + '   ' + str(max(y_score_rbf)))
     print()
+
+    def normalization(data):
+        _range = np.max(data) - np.min(data)
+        return (data - np.min(data)) / _range
+
+    # this is for f1_score, recall, accuracy and ROC curve
+    training_metrics = grid.fit(X, y)
+    training_score = training_metrics.decision_function(X)
+    training_score_normalization = normalization(training_score)
+    training_label = training_metrics.predict(X)
+    print('accuracy ' + str(accuracy_score(y, training_label)))
+    print('f1_score ' + str(f1_score(y, training_label)))
+    print('recall_score ' + str(recall_score(y, training_label)))
+
+    fpr, tpr, threshold = roc_curve(y, training_score_normalization)
+
+    # plot the ROC curve
+    plt.figure()
+    plt.plot(fpr, tpr, color='darkorange', lw=2)
+    plt.xlim([0.0, 1.05])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('The ROC curve')
+    plt.show()
 
     # return index of a sorted list
     sorted_indices = sorted(range(len(y_score_rbf)), key=lambda k: y_score_rbf[k])
@@ -691,8 +716,8 @@ this also includes 3 hyperparameter tune models
 """
 y,indices=generate_labels()
 # generate_SVM(corpus_matrix,y,indices,spreadsheet_match)
-# grid_search(corpus_matrix,y,indices,spreadsheet_match)
-k_fold_svm(corpus_matrix,y,indices,spreadsheet_match)
+grid_search(corpus_matrix,y,indices,spreadsheet_match)
+# k_fold_svm(corpus_matrix,y,indices,spreadsheet_match)
 
 
 
