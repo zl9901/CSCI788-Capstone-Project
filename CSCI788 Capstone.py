@@ -46,7 +46,7 @@ from tensorflow.keras.models import Model
 # For example, running this (by clicking run or pressing Shift+Enter) will list all files under the input directory
 
 import os
-from BERT_Implementation import *
+from bert_implementation import *
 
 # %% [code]
 # clean up data
@@ -107,8 +107,8 @@ def preprocess_data():
             """
             This is for test purpose
             """
-            # if i==1000:
-            #     return corona_body_all_text, corona_abstract_all_text, spreadsheet_match, keywords_list
+            if i==1000:
+                return corona_body_all_text, corona_abstract_all_text, spreadsheet_match, keywords_list
 
             """
             only load json files
@@ -270,7 +270,7 @@ def generate_tfidf(corona_body_all_text):
         corpus.append(' '.join(text))
 
     # the features of each data are 900 now
-    vectorizer=TfidfVectorizer(max_features=900)
+    vectorizer=TfidfVectorizer(max_features=1500)
     corpus_matrix=vectorizer.fit_transform(corpus)
     print(corpus_matrix.shape)
 
@@ -315,6 +315,7 @@ def grid_search(corpus_matrix,y,indices,spreadsheet_match):
         if i in indices:
             # train on 200 papers
             X.append(corpus_matrix[i])
+    
 
     clf = grid.fit(X, y)
 
@@ -329,6 +330,29 @@ def grid_search(corpus_matrix,y,indices,spreadsheet_match):
     print(str(min(y_score_rbf)) + '   ' + str(max(y_score_rbf)))
     print()
 
+    """
+    this is the test area
+    """
+    y_pred=clf.predict(corpus_matrix)
+    workbook=xlsxwriter.Workbook('spreadsheet_SVM_prediction.xlsx')
+    worksheet=workbook.add_worksheet('My sheet')
+
+    # rewrite features and labels to a file, this is different from the initial file
+    # write the header first
+    header=['paper_id','title','authors','paper_number','label']
+    for k in range(len(header)):
+        worksheet.write(0,k,header[k])
+
+    for i in range(1, len(corpus_matrix) + 1):
+        for j in range(len(spreadsheet_match[0])):
+            worksheet.write(i, j, spreadsheet_match[i-1][j])
+            worksheet.write(i, 4, y_pred[i-1])
+    workbook.close()
+    """
+    this is the test area
+    """
+
+
     def normalization(data):
         _range = np.max(data) - np.min(data)
         return (data - np.min(data)) / _range
@@ -338,11 +362,11 @@ def grid_search(corpus_matrix,y,indices,spreadsheet_match):
     training_score = training_metrics.decision_function(X)
     training_score_normalization = normalization(training_score)
     training_label = training_metrics.predict(X)
-    print('accuracy ' + str(accuracy_score(y, training_label)))
-    print('f1_score ' + str(f1_score(y, training_label)))
-    print('recall_score ' + str(recall_score(y, training_label)))
+    print('accuracy ' + str(accuracy_score(np.array(y), training_label)))
+    print('f1_score ' + str(f1_score(np.array(y), training_label)))
+    print('recall_score ' + str(recall_score(np.array(y), training_label)))
 
-    fpr, tpr, threshold = roc_curve(y, training_score_normalization)
+    fpr, tpr, threshold = roc_curve(np.array(y), training_score_normalization)
 
     # plot the ROC curve
     plt.figure()
@@ -352,6 +376,7 @@ def grid_search(corpus_matrix,y,indices,spreadsheet_match):
     plt.xlabel('False Positive Rate')
     plt.ylabel('True Positive Rate')
     plt.title('The ROC curve')
+    plt.savefig('ROC curve.pdf')
     plt.show()
 
     # return index of a sorted list
@@ -437,11 +462,11 @@ def k_fold_svm(corpus_matrix,y,indices,spreadsheet_match):
     training_score = training_metrics.decision_function(X)
     training_score_normalization = normalization(training_score)
     training_label = training_metrics.predict(X)
-    print('accuracy ' + str(accuracy_score(y, training_label)))
-    print('f1_score ' + str(f1_score(y, training_label)))
-    print('recall_score ' + str(recall_score(y, training_label)))
+    print('accuracy ' + str(accuracy_score(np.array(y), training_label)))
+    print('f1_score ' + str(f1_score(np.array(y), training_label)))
+    print('recall_score ' + str(recall_score(np.array(y), training_label)))
 
-    fpr, tpr, threshold = roc_curve(y, training_score_normalization)
+    fpr, tpr, threshold = roc_curve(np.array(y), training_score_normalization)
 
     # plot the ROC curve
     plt.figure()
@@ -521,11 +546,11 @@ def generate_SVM(corpus_matrix,y,indices,spreadsheet_match):
     training_score=training_metrics.decision_function(X)
     training_score_normalization = normalization(training_score)
     training_label=training_metrics.predict(X)
-    print('accuracy '+str(accuracy_score(y,training_label)))
-    print('f1_score '+str(f1_score(y,training_label)))
-    print('recall_score '+str(recall_score(y,training_label)))
+    print('accuracy ' + str(accuracy_score(np.array(y), training_label)))
+    print('f1_score ' + str(f1_score(np.array(y), training_label)))
+    print('recall_score ' + str(recall_score(np.array(y), training_label)))
 
-    fpr,tpr,threshold=roc_curve(y,training_score_normalization)
+    fpr, tpr, threshold = roc_curve(np.array(y), training_score_normalization)
 
     # plot the ROC curve
     plt.figure()
