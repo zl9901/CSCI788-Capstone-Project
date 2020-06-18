@@ -3,52 +3,63 @@
 # It is defined by the kaggle/python docker image: https://github.com/kaggle/docker-python
 # For example, here's several helpful packages to load in
 
+import os
 import pdb
 import numpy as np # linear algebra
 import pandas as pd # data processing, CSV file I/O (e.g. pd.read_csv)
 import json as js
+
+
 import nltk
 import gensim
 from gensim import corpora, models
 from gensim.utils import simple_preprocess
 from gensim.parsing.preprocessing import STOPWORDS
 from nltk.stem import WordNetLemmatizer,SnowballStemmer
-from sklearn.feature_extraction.text import TfidfVectorizer
 from nltk.stem.porter import *
-from operator import itemgetter
-import matplotlib.pyplot as plt
-from sklearn.cluster import KMeans
-from sklearn.svm import SVC
-from sklearn.decomposition import PCA
-from sklearn.metrics import silhouette_samples, silhouette_score
 
-from wordcloud import WordCloud, STOPWORDS
+
+from sklearn.decomposition import PCA
+from sklearn.feature_extraction.text import TfidfVectorizer
+
+
 import matplotlib.pyplot as plt
+from wordcloud import WordCloud, STOPWORDS
 import csv
-import xlsxwriter
-import random
-import re
 import xlrd
+import xlsxwriter
+
+
+import random
+import collections
+import re
+from operator import itemgetter
+import seaborn as sns
+
+
 from sklearn.svm import SVC
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import *
 from sklearn.model_selection import GridSearchCV
 from sklearn.model_selection import KFold
+from sklearn.cluster import KMeans
+from sklearn.metrics import silhouette_samples, silhouette_score
+from sklearn.decomposition import LatentDirichletAllocation as LDA
+from sklearn.feature_extraction.text import CountVectorizer
 
-import collections
 
 import tensorflow as tf
 import tensorflow_hub as hub
 import bert
 from tensorflow.keras.models import Model
 
-# Input data files are available in the "../input/" directory.
-# For example, running this (by clicking run or pressing Shift+Enter) will list all files under the input directory
 
-import os
 from bert_implementation import *
 from randomforests_related import *
 from svm_related import *
+
+# Input data files are available in the "../input/" directory.
+# For example, running this (by clicking run or pressing Shift+Enter) will list all files under the input directory
 
 # %% [code]
 # clean up data
@@ -78,6 +89,20 @@ def preprocess_stem_clean(text):
         if token not in STOPWORDS:
             result.append(lemmatize_stemming(token))
     return result
+
+
+def remove_punctuation(string):
+    # punctuation marks
+    punctuations = '''!()-[]{};:'"\,<>./?@#$%^&*_~'''
+
+    # traverse the given string and if any punctuation
+    # marks occur replace it with null
+    for x in string.lower():
+        if x in punctuations:
+            string = string.replace(x, "")
+
+            # Print string without punctuation
+    return string.split(' ')
 
 
 # %% [code]
@@ -273,13 +298,43 @@ def generate_tfidf(corona_body_all_text):
         corpus.append(' '.join(text))
 
     # the features of each data are 900 now
-    vectorizer=TfidfVectorizer(max_features=1500)
+    vectorizer=TfidfVectorizer(max_features=1500, stop_words='english')
     corpus_matrix=vectorizer.fit_transform(corpus)
     print(corpus_matrix.shape)
 
-    # the most representative top 900 words in corona_body_all_text
+
+    # the most representative top 1500 words in corona_body_all_text
     # the basic structure is like a python dictionary
     word_feature_list=vectorizer.get_feature_names()
+
+
+    """
+    LDA (Latent Dirichlet Allocation) Implementation
+    -----------------------------------------------------------------------------------------------------------
+    """
+    # the number of terms included in the bag of words matrix is restricted to the top 1000
+    no_features=1000
+    tf_vectorizer = CountVectorizer(max_df=0.95, min_df=2, max_features=no_features, stop_words='english')
+    tf = tf_vectorizer.fit_transform(corpus)
+    tf_feature_names = tf_vectorizer.get_feature_names()
+
+    no_topics = 20
+    lda = LDA(n_components=no_topics, learning_method='online', learning_offset=50.,
+                                   random_state=0).fit(tf)
+
+
+    def display_topics(model, feature_names, no_top_words):
+
+        for topic_idx, topic in enumerate(model.components_):
+            print("\nTopic #%d:" % topic_idx)
+            print(" ".join([feature_names[i] for i in topic.argsort()[:-no_top_words - 1:-1]]))
+    print()
+    no_top_words = 10
+    display_topics(lda, tf_feature_names, no_top_words)
+
+    """
+    -----------------------------------------------------------------------------------------------------------
+    """
     corpus_matrix=corpus_matrix.toarray()
     return corpus_matrix,word_feature_list
 
@@ -421,6 +476,66 @@ def grid_search(corpus_matrix,y,indices,spreadsheet_match):
     workbook.close()
 
 
+def LDA_analysis(corona_body_all_text):
+    # Load the library with the CountVectorizer method
+    sns.set_style('whitegrid')
+
+    # Helper function
+    def plot_10_most_common_words(count_data, count_vectorizer):
+        words = count_vectorizer.get_feature_names()
+        total_counts = np.zeros(len(words))
+        # count_data is like a Counter dictionary
+        for t in count_data:
+            total_counts += t.toarray()[0]
+
+        count_dict = (zip(words, total_counts))
+        count_dict = sorted(count_dict, key=lambda x: x[1], reverse=True)[0:10]
+        words = [w[0] for w in count_dict]
+        counts = [w[1] for w in count_dict]
+        x_pos = np.arange(len(words))
+
+        plt.figure(2, figsize=(15, 15 / 1.6180))
+        plt.subplot(title='10 most common words')
+        sns.set_context("notebook", font_scale=1.25, rc={"lines.linewidth": 2.5})
+        sns.barplot(x_pos, counts, palette='husl')
+        plt.xticks(x_pos, words, rotation=90)
+        plt.xlabel('words')
+        plt.ylabel('counts')
+        plt.show()
+
+    # Initialise the count vectorizer with the English stop words
+    count_vectorizer = CountVectorizer(stop_words='english')
+    # Fit and transform the processed titles
+    count_data = count_vectorizer.fit_transform(corona_body_all_text)
+
+    # Visualise the 10 most common words
+    plot_10_most_common_words(count_data, count_vectorizer)
+
+
+    # This is another version of LDA implementation
+    """
+    import warnings
+    warnings.simplefilter("ignore", DeprecationWarning)
+
+    # Helper function
+    def print_topics(model, count_vectorizer, n_top_words):
+        words = count_vectorizer.get_feature_names()
+        for topic_idx, topic in enumerate(model.components_):
+            print("\nTopic #%d:" % topic_idx)
+            print(" ".join([words[i] for i in topic.argsort()[:-n_top_words - 1:-1]]))
+
+    # Tweak the two parameters below
+    number_topics = 5
+    number_words = 10
+    # Create and fit the LDA model, n_jobs=-1 means using all processors
+    lda = LDA(n_components=number_topics, n_jobs=-1)
+    lda.fit(count_data)
+    # Print the topics found by the LDA model
+    print("Topics found via LDA:")
+    print_topics(lda, count_vectorizer, number_words)
+    """
+
+
 
 """
 data preprocessing and wordcloud operation
@@ -429,28 +544,38 @@ corona_body_all_text, corona_abstract_all_text, spreadsheet_match, keywords_list
 print('The total number of documents is '+str(len(corona_body_all_text)))
 print('The total number of items in spreadsheet is '+str(len(spreadsheet_match)))
 print('The total number of documents which contain keywords is '+str(len(keywords_list)))
+
+
 keywords_all_text = [preprocess_stem_clean(x) for x in keywords_list]
 word_cloud_advanced(keywords_all_text)
 
 
 """
-this is for test purpose
+get histogram visualization
 """
-# test(spreadsheet_match)
+# generate_histogram(corona_body_all_text)
 
+
+"""
+this body_all_text below is after stem cleaning
+"""
+# body_all_text = [preprocess_stem_clean(x) for x in corona_body_all_text]
+"""
+this body_all_text is for entire words
+"""
+body_all_text = [remove_punctuation(x) for x in corona_body_all_text]
 
 """
 dimension reduction
 """
-# generate_histogram(corona_body_all_text)
-
-body_all_text = [preprocess_stem_clean(x) for x in corona_body_all_text]
 corpus_matrix,word_feature_list=generate_tfidf(body_all_text)
+LDA_analysis(corona_body_all_text)
 print('dimensional reduction is done')
+print()
 
 
 """
-spreadsheet visualization
+initial spreadsheet visualization
 """
 # initial_csv(spreadsheet_match)
 # initial_spreadsheet(spreadsheet_match)
@@ -458,7 +583,7 @@ spreadsheet visualization
 
 """
 SVM iterations to generate the pre-trained model
-this also includes 3 hyperparameter tune models 
+this also includes hyperparameter tuning models 
 """
 y,indices=generate_labels()
 # generate_SVM(corpus_matrix,y,indices,spreadsheet_match)
