@@ -31,6 +31,7 @@ import xlsxwriter
 
 
 import random
+import copy
 import collections
 import re
 from operator import itemgetter
@@ -46,6 +47,7 @@ from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_samples, silhouette_score
 from sklearn.decomposition import LatentDirichletAllocation as LDA
 from sklearn.feature_extraction.text import CountVectorizer
+from sklearn import mixture
 
 
 import tensorflow as tf
@@ -65,6 +67,7 @@ from svm_related import *
 # clean up data
 stemmer = SnowballStemmer('english')
 vocab_size = 10000
+
 
 
 """
@@ -92,6 +95,7 @@ def preprocess_stem_clean(text):
 
 
 def remove_punctuation(string):
+
     # punctuation marks
     punctuations = '''!()-[]{};:'"\,<>./?@#$%^&*_~'''
 
@@ -134,8 +138,8 @@ def preprocess_data():
             """
             This is for test purpose
             """
-            # if i==1000:
-            #     return corona_body_all_text, corona_abstract_all_text, spreadsheet_match, keywords_list
+            if i==200:
+                return corona_body_all_text, corona_abstract_all_text, spreadsheet_match, keywords_list
 
             """
             only load json files
@@ -212,7 +216,7 @@ def preprocess_data():
 """
 we use wordCloud library to show the most frequent words in each cluster 
 """
-def word_cloud_advanced(corona_pos_all_text):
+def word_cloud_advanced(corona_pos_all_text,image_id):
 
     """
     wordCloud only accepts string as input
@@ -234,7 +238,8 @@ def word_cloud_advanced(corona_pos_all_text):
     plt.imshow(wordcloud)
     plt.axis("off")
     plt.tight_layout(pad=0)
-    plt.savefig('wordcloud.pdf')
+    string='wordcloud'+str(image_id)+'.pdf'
+    plt.savefig(string)
     plt.show()
 
 
@@ -441,7 +446,7 @@ def grid_search(corpus_matrix,y,indices,spreadsheet_match):
     plt.xlabel('False Positive Rate')
     plt.ylabel('True Positive Rate')
     plt.title('The ROC curve')
-    plt.savefig('ROC curve.pdf')
+    plt.savefig('ROC_curve.pdf')
     plt.show()
 
     # return index of a sorted list
@@ -476,7 +481,7 @@ def grid_search(corpus_matrix,y,indices,spreadsheet_match):
     workbook.close()
 
 
-def LDA_analysis(corona_body_all_text):
+def LDA_analysis(body_all_text_processed):
     # Load the library with the CountVectorizer method
     sns.set_style('whitegrid')
 
@@ -501,12 +506,13 @@ def LDA_analysis(corona_body_all_text):
         plt.xticks(x_pos, words, rotation=90)
         plt.xlabel('words')
         plt.ylabel('counts')
+        plt.savefig('10_most_common_words.pdf')
         plt.show()
 
     # Initialise the count vectorizer with the English stop words
     count_vectorizer = CountVectorizer(stop_words='english')
     # Fit and transform the processed titles
-    count_data = count_vectorizer.fit_transform(corona_body_all_text)
+    count_data = count_vectorizer.fit_transform(body_all_text_processed)
 
     # Visualise the 10 most common words
     plot_10_most_common_words(count_data, count_vectorizer)
@@ -535,11 +541,83 @@ def LDA_analysis(corona_body_all_text):
     print_topics(lda, count_vectorizer, number_words)
     """
 
+"""
+this is Gaussian mixture models implementation
+"""
+def Gaussian_mixture_models(corpus_matrix,k):
+
+    gmm=mixture.GaussianMixture(n_components=k)
+    y_gmm=gmm.fit_predict(corpus_matrix)
+
+    centers=gmm.means_
+
+    bic_score=gmm.bic(corpus_matrix)
+    aic_score=gmm.aic(corpus_matrix)
+
+    return y_gmm, centers, bic_score, aic_score
+
+
+def GMM_visualization(corpus_matrix):
+
+    corpus_copy=copy.copy(corpus_matrix)
+    np.random.shuffle(corpus_copy)
+    bayesian_info_criterion = []
+    akaike_info_criterion =[]
+
+    n_components=np.arange(2,30)
+    for k in range(2, 30):
+        indices, centers, bic_score, aic_score=Gaussian_mixture_models(corpus_copy[:1000],k)
+        bayesian_info_criterion.append(bic_score)
+        akaike_info_criterion.append(aic_score)
+
+    plt.plot(n_components,bayesian_info_criterion,label='BIC')
+    plt.plot(n_components,akaike_info_criterion,label='AIC')
+    plt.legend(loc='best')
+    plt.xlabel('n_components')
+    plt.ylabel('scores')
+    plt.savefig('Bayesian&Akaike_Information_Criterion.pdf')
+    plt.show()
+
+
+
+def GMM_wordCloud(corona_info, indices,image_id):
+    """
+    length of res corresponds to number of clusters
+    """
+    res=[[] for _ in range(len(set(indices)))]
+    for i in range(len(indices)):
+        res[indices[i]].append(corona_info[i][:])
+
+    """
+    for different clusters show different wordCloud
+    """
+    for subarray in res:
+        word_cloud_advanced(subarray,image_id)
+        image_id+=1
+
+
+
+"""
+Only keep the words with the top-5000 tfidf words.
+"""
+def process_word(text, word_feature_list):
+    result = []
+    for p in text:
+        temp = []
+        for w in p:
+            if w in word_feature_list:
+                temp.append(w)
+        if len(temp) != 0:
+            result.append(temp)
+    result=np.array(result)
+    return result
+
 
 
 """
 data preprocessing and wordcloud operation
 """
+image_id=0
 corona_body_all_text, corona_abstract_all_text, spreadsheet_match, keywords_list = preprocess_data()
 print('The total number of documents is '+str(len(corona_body_all_text)))
 print('The total number of items in spreadsheet is '+str(len(spreadsheet_match)))
@@ -547,7 +625,8 @@ print('The total number of documents which contain keywords is '+str(len(keyword
 
 
 keywords_all_text = [preprocess_stem_clean(x) for x in keywords_list]
-word_cloud_advanced(keywords_all_text)
+word_cloud_advanced(keywords_all_text,image_id)
+image_id+=1
 
 
 """
@@ -563,12 +642,27 @@ this body_all_text below is after stem cleaning
 """
 this body_all_text is for entire words
 """
-body_all_text = [remove_punctuation(x) for x in corona_body_all_text]
+tmp_list=corona_body_all_text.copy()
+body_all_text = [remove_punctuation(x) for x in tmp_list]
 
 """
 dimension reduction
 """
 corpus_matrix,word_feature_list=generate_tfidf(body_all_text)
+
+"""
+GMM Implementation
+"""
+GMM_visualization(corpus_matrix)
+body_all_text_processed=process_word(body_all_text,word_feature_list)
+print('word screening is done')
+indices,_,_,_=Gaussian_mixture_models(corpus_matrix,8)
+GMM_wordCloud(body_all_text_processed,indices,image_id)
+
+
+"""
+LDA Implementation
+"""
 LDA_analysis(corona_body_all_text)
 print('dimensional reduction is done')
 print()
