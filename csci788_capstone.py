@@ -20,10 +20,12 @@ from nltk.stem.porter import *
 
 
 from sklearn.decomposition import PCA
-from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
 
 
 import matplotlib.pyplot as plt
+import pyLDAvis
+import pyLDAvis.sklearn
 from wordcloud import WordCloud, STOPWORDS
 import csv
 import xlrd
@@ -48,6 +50,7 @@ from sklearn.metrics import silhouette_samples, silhouette_score
 from sklearn.decomposition import LatentDirichletAllocation as LDA
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn import mixture
+
 
 
 import tensorflow as tf
@@ -297,7 +300,7 @@ def initial_csv(spreadsheet_match):
 """
 dimension reduction
 """
-def generate_tfidf(corona_body_all_text):
+def tfidf_LDA(corona_body_all_text):
     corpus=[]
     for text in corona_body_all_text:
         corpus.append(' '.join(text))
@@ -318,24 +321,141 @@ def generate_tfidf(corona_body_all_text):
     -----------------------------------------------------------------------------------------------------------
     """
     # the number of terms included in the bag of words matrix is restricted to the top 1000
-    no_features=1000
+
+
+    no_features=1500
     tf_vectorizer = CountVectorizer(max_df=0.95, min_df=2, max_features=no_features, stop_words='english')
     tf = tf_vectorizer.fit_transform(corpus)
     tf_feature_names = tf_vectorizer.get_feature_names()
 
-    no_topics = 20
-    lda = LDA(n_components=no_topics, learning_method='online', learning_offset=50.,
-                                   random_state=0).fit(tf)
+    """
+    this is for the grid search
+    """
+    search_params = {'n_components': [10, 15, 20, 25, 30], 'learning_decay': [.5, .7, .9]}
+    lda = LDA()
+    model= GridSearchCV(lda, param_grid=search_params)
+    model.fit(tf)
+
+    best_lda_model=model.best_estimator_
+
+    # Model Parameters
+    print("Best Model's Params: ", model.best_params_)
+
+    # Log Likelihood Score
+    print("Best Log Likelihood Score: ", model.best_score_)
+
+    # Perplexity
+    print("Model Perplexity: ", best_lda_model.perplexity(tf))
+
+    # Get Log Likelyhoods from Grid Search Output
+    n_topics = [10, 15, 20, 25, 30]
+    # print(model.cv_results_)
+    log_likelyhoods_5 = [round(model.cv_results_['mean_test_score'][index]) for index, gscore in enumerate(model.cv_results_['param_learning_decay']) if
+                         gscore == 0.5]
+    log_likelyhoods_7 = [round(model.cv_results_['mean_test_score'][index]) for index, gscore in enumerate(model.cv_results_['param_learning_decay']) if
+                         gscore== 0.7]
+    log_likelyhoods_9 = [round(model.cv_results_['mean_test_score'][index]) for index, gscore in enumerate(model.cv_results_['param_learning_decay']) if
+                         gscore== 0.9]
+
+    # Show graph
+    plt.figure(figsize=(12, 8))
+    plt.plot(n_topics, log_likelyhoods_5, label='0.5')
+    plt.plot(n_topics, log_likelyhoods_7, label='0.7')
+    plt.plot(n_topics, log_likelyhoods_9, label='0.9')
+    plt.title("Choosing Optimal LDA Model")
+    plt.xlabel("Num Topics")
+    plt.ylabel("Log Likelyhood Scores")
+    plt.legend(title='Learning decay', loc='best')
+    plt.show()
+
+    # Create Document - Topic Matrix
+    lda_output = best_lda_model.transform(tf)
+
+    # column names
+    topicnames = ["Topic" + str(i) for i in range(best_lda_model.n_components)]
+
+    # index names
+    docnames = ["Doc" + str(i) for i in range(len(corona_body_all_text))]
+
+    # Make the pandas dataframe
+    df_document_topic = pd.DataFrame(np.round(lda_output, 2), columns=topicnames, index=docnames)
+
+    # Get dominant topic for each document
+    dominant_topic = np.argmax(df_document_topic.values, axis=1)
+    df_document_topic['dominant_topic'] = dominant_topic
+
+    # Styling
+    def color_green(val):
+        color = 'green' if val > .1 else 'black'
+        return 'color: {col}'.format(col=color)
+
+    def make_bold(val):
+        weight = 700 if val > .1 else 400
+        return 'font-weight: {weight}'.format(weight=weight)
+
+    # Apply Style
+    df_document_topics = df_document_topic.head(15).style.applymap(color_green).applymap(make_bold)
+    df_document_topics.to_excel("df_document_topics.xlsx")
+    print(df_document_topics)
+
+    # Review topics distribution across documents
+    df_topic_distribution = df_document_topic['dominant_topic'].value_counts().reset_index(name="Num Documents")
+    df_topic_distribution.columns = ['Topic Num', 'Num Documents']
+    df_topic_distribution.to_excel("df_topic_distribution.xlsx")
+    print(df_topic_distribution)
 
 
-    def display_topics(model, feature_names, no_top_words):
+    panel = pyLDAvis.sklearn.prepare(best_lda_model, tf, tf_vectorizer, mds='tsne')
+    pyLDAvis.save_html(panel,'LDA_Visualization.html')
 
-        for topic_idx, topic in enumerate(model.components_):
-            print("\nTopic #%d:" % topic_idx)
-            print(" ".join([feature_names[i] for i in topic.argsort()[:-no_top_words - 1:-1]]))
-    print()
-    no_top_words = 10
-    display_topics(lda, tf_feature_names, no_top_words)
+
+    # Topic-Keyword Matrix
+    df_topic_keywords = pd.DataFrame(best_lda_model.components_)
+
+    # Assign Column and Index
+    df_topic_keywords.columns = vectorizer.get_feature_names()
+    df_topic_keywords.index = topicnames
+
+    # View
+    df_topic_keywords.head()
+
+    # Show top n keywords for each topic
+    def show_topics(vectorizer, lda_model, n_words):
+        keywords = np.array(vectorizer.get_feature_names())
+        topic_keywords = []
+        for topic_weights in lda_model.components_:
+            top_keyword_locs = (-topic_weights).argsort()[:n_words]
+            topic_keywords.append(keywords.take(top_keyword_locs))
+        return topic_keywords
+
+    topic_keywords = show_topics(vectorizer=vectorizer, lda_model=best_lda_model, n_words=15)
+
+    # Topic - Keywords Dataframe
+    df_topic_keywords = pd.DataFrame(topic_keywords)
+    df_topic_keywords.columns = ['Word ' + str(i) for i in range(df_topic_keywords.shape[1])]
+    df_topic_keywords.index = ['Topic ' + str(i) for i in range(df_topic_keywords.shape[0])]
+    df_topic_keywords.to_excel("df_topic_keywords.xlsx")
+    print(df_topic_keywords)
+
+
+    """
+    grid search ends
+    """
+
+
+    # no_topics = 20
+    # lda = LDA(n_components=no_topics, learning_method='online', learning_offset=50.,
+    #                                random_state=0).fit(tf)
+    #
+    #
+    # def display_topics(model, feature_names, no_top_words):
+    #
+    #     for topic_idx, topic in enumerate(model.components_):
+    #         print("\nTopic #%d:" % topic_idx)
+    #         print(" ".join([feature_names[i] for i in topic.argsort()[:-no_top_words - 1:-1]]))
+    # print()
+    # no_top_words = 10
+    # display_topics(lda, tf_feature_names, no_top_words)
 
     """
     -----------------------------------------------------------------------------------------------------------
@@ -648,7 +768,7 @@ body_all_text = [remove_punctuation(x) for x in tmp_list]
 """
 dimension reduction
 """
-corpus_matrix,word_feature_list=generate_tfidf(body_all_text)
+corpus_matrix,word_feature_list=tfidf_LDA(body_all_text)
 
 """
 GMM Implementation
