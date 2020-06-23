@@ -251,16 +251,15 @@ def tfidf_LDA(corona_body_all_text):
     for text in corona_body_all_text:
         corpus.append(' '.join(text))
 
-    # the number of terms included in the bag of words matrix is restricted to the top 100
-    no_features=100
-    tf_vectorizer = CountVectorizer(max_df=0.95, min_df=2, max_features=no_features, stop_words='english')
-    corpus_matrix = tf_vectorizer.fit_transform(corpus)
+    # the features of each data are 900 now
+    vectorizer=TfidfVectorizer(max_features=100, stop_words='english')
+    corpus_matrix=vectorizer.fit_transform(corpus)
     print(corpus_matrix.shape)
+
 
     # the most representative top 1500 words in corona_body_all_text
     # the basic structure is like a python dictionary
-    word_feature_list = tf_vectorizer.get_feature_names()
-
+    word_feature_list=vectorizer.get_feature_names()
     corpus_matrix=corpus_matrix.toarray()
     return corpus_matrix,word_feature_list
 
@@ -343,18 +342,19 @@ this body_all_text below is after stem cleaning
 # body_all_text = [preprocess_stem_clean(x) for x in corona_body_all_text]
 
 
+my_body_all_text=np.load('body_all_text.npy',allow_pickle=True)
 
 """
 dimension reduction
 """
-# corpus_matrix,word_feature_list=tfidf_LDA(body_all_text)
+corpus_matrix,word_feature_list=tfidf_LDA(my_body_all_text)
 
-# np.save('body_all_text.npy',body_all_text,allow_pickle=True)
-# print('saved successfully')
+np.save('hundred_corpus_matrix.npy',corpus_matrix,allow_pickle=True)
+print('saved successfully')
 
-my_corpus_matrix=np.load('corpus_matrix.npy',allow_pickle=True)
+my_corpus_matrix=np.load('hundred_corpus_matrix.npy',allow_pickle=True)
 my_word_feature_list=np.load('word_feature_list.npy',allow_pickle=True).tolist()
-my_body_all_text=np.load('body_all_text.npy',allow_pickle=True)
+
 print(my_corpus_matrix.shape)
 print(my_body_all_text.shape)
 print(len(my_word_feature_list))
