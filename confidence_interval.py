@@ -230,19 +230,33 @@ estimate the effect of the training dataset size
 """
 def add_noise(corpus_matrix):
 
-    # 5 represents 5 different numeric levels
-    clf = SVC(kernel='rbf',C=100,gamma='scale')
-    training_error=[[] for _ in range(5)]
-    test_error=[[] for _ in range(5)]
+    cnt=0
+
+    training_accuracy=[[] for _ in range(11)]
+    test_accuracy=[[] for _ in range(11)]
+
+    training_precision=[[] for _ in range(11)]
+    test_precision=[[] for _ in range(11)]
+
+    training_recall=[[] for _ in range(11)]
+    test_recall=[[] for _ in range(11)]
+
+    training_f1_score=[[] for _ in range(11)]
+    test_f1_score=[[] for _ in range(11)]
 
 
     """
     first 40 development sets all need to be randomly generated and tested their MSE
     """
-    for _ in range(5):
+    for index in range(40):
 
+        # 5 represents 5 different numeric levels
         ini_training_y, ini_training_indices, _ = generate_development_set('labels.xlsx')
         ini_training_y = np.array(ini_training_y)
+
+        cw = collections.Counter(ini_training_y)
+        clf = SVC(kernel='rbf', C=100, gamma='scale',class_weight=cw)
+
         ini_training_X = []
         for i in range(len(corpus_matrix)):
             if i in ini_training_indices:
@@ -250,9 +264,36 @@ def add_noise(corpus_matrix):
         ini_training_X = np.array(ini_training_X)
 
 
-        ini_training_y_pred = clf.fit(ini_training_X, ini_training_y).predict(ini_training_X)
-        ini_training_sse = mean_squared_error(ini_training_y, ini_training_y_pred)
-        training_error[0].append(ini_training_sse)
+        ini_obj=clf.fit(ini_training_X, ini_training_y)
+        ini_training_y_pred = ini_obj.predict(ini_training_X)
+        ini_training_y_score = ini_obj.decision_function(ini_training_X)
+
+        ini_training_ac = accuracy_score(ini_training_y, ini_training_y_pred)
+        ini_training_pr = precision_score(ini_training_y, ini_training_y_pred)
+        ini_training_re = recall_score(ini_training_y, ini_training_y_pred)
+        ini_training_f1 = f1_score(ini_training_y, ini_training_y_pred)
+
+        training_accuracy[0].append(ini_training_ac)
+        training_precision[0].append(ini_training_pr)
+        training_recall[0].append(ini_training_re)
+        training_f1_score[0].append(ini_training_f1)
+
+        # only plot the last ROC curve of 40 random results
+        if index==39:
+            ini_training_fpr, ini_training_tpr, threshold = roc_curve(ini_training_y, ini_training_y_score)
+
+            # plot the ROC curve
+            plt.figure()
+            plt.plot(ini_training_fpr, ini_training_tpr, color='darkorange', lw=2)
+            plt.xlim([0.0, 1.05])
+            plt.ylim([0.0, 1.05])
+            plt.xlabel('False Positive Rate')
+            plt.ylabel('True Positive Rate')
+            plt.title('The ROC curve')
+            string = 'ROC_curve_training' + str(cnt) + '.pdf'
+            plt.savefig(string)
+            plt.show()
+
 
 
         ini_test_y, ini_test_indices = generate_labels('200_samples.xlsx')
@@ -264,28 +305,55 @@ def add_noise(corpus_matrix):
         ini_test_X = np.array(ini_test_X)
 
 
-        ini_test_y_pred = clf.fit(ini_training_X, ini_training_y).predict(ini_test_X)
-        ini_test_sse = mean_squared_error(ini_test_y, ini_test_y_pred)
-        test_error[0].append(ini_test_sse)
+        ini_test_y_pred = ini_obj.predict(ini_test_X)
+        ini_test_y_score = ini_obj.decision_function(ini_test_X)
+
+        ini_test_ac = accuracy_score(ini_test_y, ini_test_y_pred)
+        ini_test_pr = accuracy_score(ini_test_y, ini_test_y_pred)
+        ini_test_re = accuracy_score(ini_test_y, ini_test_y_pred)
+        ini_test_f1 = accuracy_score(ini_test_y, ini_test_y_pred)
+
+        test_accuracy[0].append(ini_test_ac)
+        test_precision[0].append(ini_test_pr)
+        test_recall[0].append(ini_test_re)
+        test_f1_score[0].append(ini_test_f1)
+
+        if index == 39:
+            ini_test_fpr, ini_test_tpr, threshold = roc_curve(ini_test_y, ini_test_y_score)
+
+            # plot the ROC curve
+            plt.figure()
+            plt.plot(ini_test_fpr, ini_test_tpr, color='darkorange', lw=2)
+            plt.xlim([0.0, 1.05])
+            plt.ylim([0.0, 1.05])
+            plt.xlabel('False Positive Rate')
+            plt.ylabel('True Positive Rate')
+            plt.title('The ROC curve')
+            string = 'ROC_curve_test' + str(cnt) + '.pdf'
+            plt.savefig(string)
+            plt.show()
+
+            cnt += 1
 
 
     """
     from 200*(2**0) to 200*(2**4) training data size
     """
-    for k in range(1,5):
+    for k in range(1,11):
 
         develop_y, develop_indices, pos=generate_development_set('labels.xlsx')
         """
         the maximal range is the number of items which are in the training dataset
         consider edge case , 0 will not be included, 0 represents the head line
         """
-        ref = list(set([i for i in range(1,500)]) - set(pos))
+        ref = list(set([i for i in range(1,3001)]) - set(pos))
 
         # generate 40 different training datasets in order to plot error bars
-        for _ in range(5):
+        for pos in range(40):
 
             # to avoid raising exceptions, sample size can't exceed the the size of the entire array
-            threshold = 200 * (2 ** k) - 200
+            # 10 represents there are 10 sampling processes in total
+            threshold = len(ref)//10*k
             if threshold >= len(ref):
                 threshold = len(ref)
             random_pos = random.sample(ref, threshold)
@@ -297,15 +365,45 @@ def add_noise(corpus_matrix):
 
             training_y=np.array(training_y)
 
+            dic = collections.Counter(training_y)
+            clf = SVC(kernel='rbf', C=100, gamma='scale', class_weight=dic)
+
             training_X = []
             for i in range(len(corpus_matrix)):
                 if i in training_indices:
                     training_X.append(corpus_matrix[i])
             training_X=np.array(training_X)
 
-            training_y_pred = clf.fit(training_X, training_y).predict(training_X)
-            training_sse = mean_squared_error(training_y, training_y_pred)
-            training_error[k].append(training_sse)
+            obj = clf.fit(training_X, training_y)
+            training_y_pred = obj.predict(training_X)
+            training_y_score = obj.decision_function(training_X)
+
+
+            training_ac = accuracy_score(training_y, training_y_pred)
+            training_pr = precision_score(training_y, training_y_pred)
+            training_re = recall_score(training_y, training_y_pred)
+            training_f1 = f1_score(training_y, training_y_pred)
+
+            training_accuracy[k].append(training_ac)
+            training_precision[k].append(training_pr)
+            training_recall[k].append(training_re)
+            training_f1_score[k].append(training_f1)
+
+            # only plot the last ROC curve of 40 iterations
+            if pos==39:
+                training_fpr, training_tpr, threshold = roc_curve(training_y, training_y_score)
+
+                # plot the ROC curve
+                plt.figure()
+                plt.plot(training_fpr, training_tpr, color='darkorange', lw=2)
+                plt.xlim([0.0, 1.05])
+                plt.ylim([0.0, 1.05])
+                plt.xlabel('False Positive Rate')
+                plt.ylabel('True Positive Rate')
+                plt.title('The ROC curve')
+                string = 'ROC_curve_training' + str(cnt) + '.pdf'
+                plt.savefig(string)
+                plt.show()
 
 
             test_y, test_indices = generate_labels('200_samples.xlsx')
@@ -316,17 +414,44 @@ def add_noise(corpus_matrix):
                     test_X.append(corpus_matrix[j])
             test_X=np.array(test_X)
 
-            test_y_pred = clf.fit(training_X, training_y).predict(test_X)
-            test_sse = mean_squared_error(test_y, test_y_pred)
-            test_error[k].append(test_sse)
 
-    return training_error,test_error
+            test_y_pred = obj.predict(test_X)
+            test_y_score = obj.decision_function(test_X)
+
+            test_ac = accuracy_score(test_y, test_y_pred)
+            test_pr = precision_score(test_y, test_y_pred)
+            test_re = precision_score(test_y, test_y_pred)
+            test_f1 = f1_score(test_y, test_y_pred)
+
+            test_accuracy[k].append(test_ac)
+            test_precision[k].append(test_pr)
+            test_recall[k].append(test_re)
+            test_f1_score[k].append(test_f1)
+
+            if pos==39:
+                test_fpr, test_tpr, threshold = roc_curve(test_y, test_y_score)
+
+                # plot the ROC curve
+                plt.figure()
+                plt.plot(test_fpr, test_tpr, color='darkorange', lw=2)
+                plt.xlim([0.0, 1.05])
+                plt.ylim([0.0, 1.05])
+                plt.xlabel('False Positive Rate')
+                plt.ylabel('True Positive Rate')
+                plt.title('The ROC curve')
+                string = 'ROC_curve_test' + str(cnt) + '.pdf'
+                plt.savefig(string)
+                plt.show()
+
+                cnt += 1
+
+    return training_accuracy,test_accuracy,training_precision,test_precision,training_recall,test_recall,training_f1_score,test_f1_score
 
 
 """
 visualization of the confidence intervals
 """
-def plot_confidence_intervals(training_error,test_error):
+def plot_confidence_intervals(training_error,test_error,image_id,y_name):
     training_plot=[]
     test_plot=[]
 
@@ -340,20 +465,22 @@ def plot_confidence_intervals(training_error,test_error):
 
 
     plt.figure(2, figsize=(15, 15 / 1.6180))
-    plt.subplot(title='confidence interval curve')
-    X=[0,1,2,3,4]
-    plt.plot(X,training_plot)
-    plt.plot(X,test_plot)
-    for i in range(len(training_error)):
-        plt.vlines(x=i,ymin=min(training_error[i]),ymax=max(training_error[i]),linewidth=4,color='r')
-    for j in range(len(test_error)):
-        plt.vlines(x=j, ymin=min(test_error[j]), ymax=max(test_error[j]), linewidth=4, color='g')
+    plt.subplot(title='Confidence interval curve')
+    X=[200+i*280 for i in range(11)]
+    plt.plot(X,training_plot,label='Training'+' '+y_name)
+    plt.plot(X,test_plot,label='Test'+' '+y_name)
 
+    for i in range(len(training_error)):
+        plt.vlines(x=X[i],ymin=min(training_error[i]),ymax=max(training_error[i]),linewidth=4,color='r')
+    for j in range(len(test_error)):
+        plt.vlines(x=X[j], ymin=min(test_error[j]), ymax=max(test_error[j]), linewidth=4, color='g')
+
+    string='confidence_level'+str(image_id)+'.pdf'
+    plt.legend(loc='best')
     plt.xlabel('Number of training examples')
-    plt.ylabel('Error (SSE)')
-    plt.savefig('confidence_level.pdf')
+    plt.ylabel(y_name)
+    plt.savefig(string)
     plt.show()
-    print('111')
 
 
 """
@@ -375,7 +502,7 @@ def generate_development_set(filename):
     the maximal range is the number of items which are in the training dataset
     consider edge case , 0 will not be included, 0 represents the head line
     """
-    tmp=[i for i in range(1,500)]
+    tmp=[i for i in range(1,3001)]
     tmp_copy = copy.copy(tmp)
     np.random.shuffle(tmp_copy)
 
@@ -409,26 +536,29 @@ def generate_development_set(filename):
 # print('words cleaning completed')
 # corpus_matrix,word_feature_list=tfidf_LDA(body_all_text)
 
-corpus_matrix=np.load('hundred_corpus_matrix.npy',allow_pickle=True)
+
+corpus_matrix=np.load('corpus_matrix.npy',allow_pickle=True)
+# body_all_text=np.load('body_all_text.npy',allow_pickle=True)
+print('load successfully')
 
 
-training_error,test_error=add_noise(corpus_matrix)
-plot_confidence_intervals(training_error,test_error)
-
-# np.save('corpus_matrix.npy',corpus_matrix,allow_pickle=True)
 # np.save('word_feature_list.npy',word_feature_list,allow_pickle=True)
-# np.save('body_all_text.npy',body_all_text,allow_pickle=True)
-# print('saved successfully')
-# my_corpus_matrix=np.load('corpus_matrix.npy',allow_pickle=True)
-# my_word_feature_list=np.load('word_feature_list.npy',allow_pickle=True).tolist()
-# my_body_all_text=np.load('body_all_text.npy',allow_pickle=True)
-# print(my_corpus_matrix.shape)
-# print(my_body_all_text.shape)
-# print(len(my_word_feature_list))
-#
-#
-# test_performance(my_corpus_matrix)
+# np.save('corpus_matrix.npy',corpus_matrix,allow_pickle=True)
 
+print('dimension reduction is done')
+
+
+
+
+image_id=0
+training_accuracy,test_accuracy,training_precision,test_precision,training_recall,test_recall,training_f1_score,test_f1_score=add_noise(corpus_matrix)
+plot_confidence_intervals(training_accuracy,test_accuracy,image_id,'Accuracy')
+image_id+=1
+plot_confidence_intervals(training_precision,test_precision,image_id,'Precision')
+image_id+=1
+plot_confidence_intervals(training_recall,test_recall,image_id,'Recall')
+image_id+=1
+plot_confidence_intervals(training_f1_score,test_f1_score,image_id,'F1_score')
 
 
 print('this is the end')
