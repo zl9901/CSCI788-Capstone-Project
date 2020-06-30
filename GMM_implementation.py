@@ -5,9 +5,9 @@
 
 
 import os
-import pdb
+# import pdb
 import numpy as np # linear algebra
-import pandas as pd # data processing, CSV file I/O (e.g. pd.read_csv)
+# import pandas as pd # data processing, CSV file I/O (e.g. pd.read_csv)
 import json as js
 
 
@@ -17,7 +17,7 @@ from gensim import corpora, models
 from gensim.utils import simple_preprocess
 from gensim.parsing.preprocessing import STOPWORDS
 from nltk.stem import WordNetLemmatizer,SnowballStemmer
-from nltk.stem.porter import *
+# from nltk.stem.porter import *
 
 
 from sklearn.decomposition import PCA
@@ -88,7 +88,7 @@ def preprocess_stem_clean(text):
     the output are final tokens = unicode strings, that won’t be processed any further.
     """
     for token in simple_preprocess(text):
-        if token not in STOPWORDS:
+        if token not in STOPWORDS and token not in ['al','cd','et','en','el','da','de','lo','la','le','rt']:
             result.append(lemmatize_stemming(token))
     return result
 
@@ -251,8 +251,8 @@ def tfidf_LDA(corona_body_all_text):
     for text in corona_body_all_text:
         corpus.append(' '.join(text))
 
-    # the features of each data are 900 now
-    vectorizer=TfidfVectorizer(max_features=100, stop_words='english')
+    # the features of each data are 100 now
+    vectorizer=TfidfVectorizer(max_features=1500, stop_words='english')
     corpus_matrix=vectorizer.fit_transform(corpus)
     print(corpus_matrix.shape)
 
@@ -288,9 +288,10 @@ def GMM_visualization(corpus_matrix):
     bayesian_info_criterion = []
     akaike_info_criterion =[]
 
-    n_components=np.arange(2,30)
-    for k in range(2, 30):
-        indices, centers, bic_score, aic_score=Gaussian_mixture_models(corpus_copy[:1000],k)
+    n_components=np.arange(2,31)
+    for k in range(2,31):
+        # shuffled 10000 papers
+        indices, centers, bic_score, aic_score=Gaussian_mixture_models(corpus_copy[:10000],k)
         bayesian_info_criterion.append(bic_score)
         akaike_info_criterion.append(aic_score)
 
@@ -310,7 +311,8 @@ def GMM_wordCloud(corona_info, indices,image_id):
     """
     res=[[] for _ in range(len(set(indices)))]
     for i in range(len(indices)):
-        res[indices[i]].append(corona_info[i][:])
+        # top 3000 words of each paper can represent the main idea of the paper
+        res[indices[i]].append(corona_info[i][:3000])
 
     """
     for different clusters show different wordCloud
@@ -340,20 +342,24 @@ image_id+=1
 this body_all_text below is after stem cleaning
 """
 # body_all_text = [preprocess_stem_clean(x) for x in corona_body_all_text]
-
-
+# np.save('body_all_text.npy',body_all_text,allow_pickle=True)
 my_body_all_text=np.load('body_all_text.npy',allow_pickle=True)
+
+
+
 
 """
 dimension reduction
 """
 corpus_matrix,word_feature_list=tfidf_LDA(my_body_all_text)
-
-np.save('hundred_corpus_matrix.npy',corpus_matrix,allow_pickle=True)
+np.save('word_feature_list.npy',word_feature_list,allow_pickle=True)
+np.save('corpus_matrix.npy', corpus_matrix, allow_pickle=True)
 print('saved successfully')
 
-my_corpus_matrix=np.load('hundred_corpus_matrix.npy',allow_pickle=True)
+
+my_corpus_matrix=np.load('corpus_matrix.npy',allow_pickle=True)
 my_word_feature_list=np.load('word_feature_list.npy',allow_pickle=True).tolist()
+print('loaded successfully')
 
 print(my_corpus_matrix.shape)
 print(my_body_all_text.shape)
@@ -365,7 +371,7 @@ print(len(my_word_feature_list))
 GMM Implementation
 """
 GMM_visualization(my_corpus_matrix)
-indices,_,_,_=Gaussian_mixture_models(my_corpus_matrix,8)
+indices,_,_,_=Gaussian_mixture_models(my_corpus_matrix,15)
 GMM_wordCloud(my_body_all_text,indices,image_id)
 
 
