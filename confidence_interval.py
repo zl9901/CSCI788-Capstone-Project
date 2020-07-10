@@ -255,7 +255,7 @@ def add_noise(corpus_matrix):
         ini_training_y = np.array(ini_training_y)
 
         cw = collections.Counter(ini_training_y)
-        clf = SVC(kernel='rbf', C=100, gamma='scale',class_weight=cw)
+        clf = SVC(kernel='linear', C=100, gamma='scale',class_weight=cw)
 
         ini_training_X = []
         for i in range(len(corpus_matrix)):
@@ -366,7 +366,7 @@ def add_noise(corpus_matrix):
             training_y=np.array(training_y)
 
             dic = collections.Counter(training_y)
-            clf = SVC(kernel='rbf', C=100, gamma='scale', class_weight=dic)
+            clf = SVC(kernel='linear', C=100, gamma='scale', class_weight=dic)
 
             training_X = []
             for i in range(len(corpus_matrix)):
