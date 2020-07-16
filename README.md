@@ -36,18 +36,8 @@ edit autoexec.bat
 
 ## Usage example
 
-A few motivating and useful examples of how your product can be used. Spice this up with code blocks and potentially more screenshots.
+This project is based on python environment, and the coding can be implemented via any python-related IDE.
 
-_For more examples and usage, please refer to the [Wiki][wiki]._
-
-## Development setup
-
-Describe how to install all development dependencies and how to run an automated test-suite of some kind. Potentially do this for multiple platforms.
-
-```sh
-make install
-npm test
-```
 
 ## Release History
 
@@ -66,11 +56,10 @@ npm test
 
 ## Meta
 
-Your Name – [@YourTwitter](https://twitter.com/dbader_org) – YourEmail@example.com
+Zhuo Liu  – zl9901@rit.edu
 
-Distributed under the XYZ license. See ``LICENSE`` for more information.
+Rochester Institute of Technology
 
-[https://github.com/yourname/github-link](https://github.com/dbader/)
 
 ## Contributing
 
