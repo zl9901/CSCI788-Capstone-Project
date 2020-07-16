@@ -25,14 +25,14 @@ edit autoexec.bat
 ```
 
 ## Table of Contents 
-- [How to read papers in the database](#How to read papers in the database)
-- [Baseline of this project](#Baseline of this project)
-- [The implementation of LDA algorithm](#The implementation of LDA algorithm)
-- [The implementation of GMM algorithm](#The implementation of GMM algorithm)
-- [Learning curve with TF-IDF feature extraction](#Learning curve with TF-IDF feature extraction)
-- [Learning curve with LDA transform feature extraction](#Learning curve with LDA transform feature extraction)
-- [The implementation of BERT algorithm](#The implementation of BERT algorithm)
-- [How to test performance](#sHow to test performance)
+- How to read papers in the database
+- Baseline of this project
+- The implementation of LDA algorithm
+- The implementation of GMM algorithm
+- Learning curve with TF-IDF feature extraction
+- Learning curve with LDA transform feature extraction
+- The implementation of BERT algorithm
+- How to test performance
 
 ## Usage example
 
