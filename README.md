@@ -55,11 +55,22 @@ This project is based on python environment, and the coding can be implemented v
     * Create topic keyword document
     * Create LDA html format visualization
     * Show top n keywords for each topic
-* 0.1.0
-    * The first proper release
-    * CHANGE: Rename `foo()` to `bar()`
-* 0.0.1
-    * Work in progress
+    * Plot 10 most common words
+* The implementation of GMM algorithm[GMM_implementation.py]
+    * Using GMM unsupervised learning algorithm to plot 15 different clusters of the word cloud
+    * Make word clouds black and white (rather than color)
+    * Provide a table for the top words in each GMM cluster
+* Learning curve with TF-IDF feature extraction[lc_gridsearch.py]
+    * Consider bigrams, trigrams as features (in addition to unigrams)
+    * For all of the learning/ROC curves, train on 2500 items only, test with 500 development items and ignore 200 test items
+    * Set class according to % of positives, try class_weight attribute in the scikit-learn grid search object
+    * Try grid search on training set
+    * Finish learning curve for SVM, start with 200 items from training set, add 230 more items at each iteration (10 points/model total)
+* Learning curve with LDA transform feature extraction[lda_transform.py]
+    * Perform LDA (Latent Dirichlet Allocation) on training data, try 20-100 topics
+    * Measure BIC (baysian information criterion), score, and perplexity for each (step by 5 or 10 topics at a time)
+    * Graph each score for each model
+    * Using top 1500 unigrams, bigrams, trigrams features and using the transform function in the LDA scikit-learn module to get the projections of LDA models with best perplexity and score
 
 ## Meta
 
