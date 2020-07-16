@@ -43,11 +43,16 @@ This project is based on python environment, and the coding can be implemented v
 
 * How to read papers in the database[read_articles.py]
     * All the papers are stored in JSON format, we operate the JSON files to get the content of the paper. 
+    * Label data, 'Y' if English and paper is population study and 'N' if not English or not a population study related
+    * Train an SVM regressor with TF-IDF bag of words features over full text of each paper on labeled data
+    * Run trained SVM on full data set. It should output a number for each paper between -1 and 1
+    * Sample 67 papers from top 10% of SVM ooutputs, 67 from bottom 10%, and 66 from middle 10%
+    * Repeat the process
 * Baseline of this project[csci788_capstone.py]
     * Data cleaning
     * TF-IDF feature extraction
-    * Keywords word cloud visualization
-    * Keywords histogram visualization
+    * Keywords word cloud visualization, how many documents contain keywords, create word cloud of all keywords
+    * Keywords histogram visualization, how many documents total
     * Test the performance of all 3000 papers training dataset
 * The implementation of LDA algorithm[lda_implementation.py]
     * Log likelihood score visualization from grid search output
