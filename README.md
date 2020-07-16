@@ -71,6 +71,14 @@ This project is based on python environment, and the coding can be implemented v
     * Measure BIC (baysian information criterion), score, and perplexity for each (step by 5 or 10 topics at a time)
     * Graph each score for each model
     * Using top 1500 unigrams, bigrams, trigrams features and using the transform function in the LDA scikit-learn module to get the projections of LDA models with best perplexity and score
+* The implementation of BERT algorithm[bert_implementation.py]
+    * The initial exploration of the BERT embedding algorithm
+* How to test performance[svm_test_validation.py]
+    * Construct test validation, pull a random set of data (200 items) not from training set
+    * Label it manaully
+    * Run previous trained model on this dataset
+    * If test results are good: run predictive model on all data, so we'll have a set of all population study papers
+    * We now 2500/500/200 (training/dev/test) split
 
 ## Meta
 
