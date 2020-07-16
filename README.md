@@ -5,7 +5,7 @@
 [![Build Status][travis-image]][travis-url]
 [![Downloads Stats][npm-downloads]][npm-url]
 
-One to two paragraph statement about your product and what it does.
+In December 2019, the World Health Organization identified a new coronavirus disease with severe pneumatic symptoms, which they named COVID-19. This paper uses natural language processing to answer questions from the scientific literature that can help the public better understand COVID-19. We explore both unsupervised learning (k-means) and supervised learning (random forests). Medical staff could then more efficiently search for relevant articles, using the clusters that our analysis provides. They could also categorize unsorted articles according to the schema that our models provide. Future research could further develop and confirm associations between scientific articles via sentiment analysis. 
 
 ![](header.png)
 
