@@ -25,6 +25,12 @@ In December 2019, the World Health Organization identified a new coronavirus dis
 
 This project is based on python environment, and the coding can be implemented via any python-related IDE.
 
+## How to run the program
+- Change the path which is in line 65 to your local path to read the dataset
+- Be sure to download pdf_json.zip file which is the pdf format of the Kaggle dataset
+- Download corpus_matrix.npy, body_all_text.npy, and word_feature_list.npy files and put them in the same path as the dataset
+- Run the program in python IDE
+
 
 ## Release History
 
