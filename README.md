@@ -10,19 +10,6 @@ In December 2019, the World Health Organization identified a new coronavirus dis
 ![](header1.png)
 ![](header2.png)
 
-## Installation
-
-OS X & Linux:
-
-```sh
-npm install my-crazy-module --save
-```
-
-Windows:
-
-```sh
-edit autoexec.bat
-```
 
 ## Table of Contents 
 - How to read papers in the database
