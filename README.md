@@ -35,7 +35,7 @@ This project is based on python environment, and the coding can be implemented v
    * Change the path in read_articles.py which is in line 15 to your local path to read the dataset
    * Change the path in svm_test_validation.py which is in line 62 to your local path to read the dataset
 * Be sure to download pdf_json.zip file which is the pdf format of the Kaggle dataset (Please visit https://drive.google.com/drive/u/1/folders/1x6OicUyOfWFYmTDulR_sV-mPsMuk70pR to download the dataset)
-* Download corpus_matrix.npy, body_all_text.npy, and word_feature_list.npy files and put them in the same path as the dataset (Please visit https://drive.google.com/drive/u/1/folders/1x6OicUyOfWFYmTDulR_sV-mPsMuk70pR to download the dataset)
+* Download corpus_matrix.npy, body_all_text.npy, and word_feature_list.npy files and put them in the same path as the dataset (Please visit https://drive.google.com/drive/u/1/folders/1x6OicUyOfWFYmTDulR_sV-mPsMuk70pR to download the files)
 * Code explanations
    * Using GMM_implementation.py to run the Gaussian mixture models algorithm
    * Using confidence_interval.py to test the TF-IDF feature extraction approach
