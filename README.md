@@ -26,10 +26,25 @@ In December 2019, the World Health Organization identified a new coronavirus dis
 This project is based on python environment, and the coding can be implemented via any python-related IDE.
 
 ## How to run the program
-- Change the path which is in line 65 to your local path to read the dataset
-- Be sure to download pdf_json.zip file which is the pdf format of the Kaggle dataset
-- Download corpus_matrix.npy, body_all_text.npy, and word_feature_list.npy files and put them in the same path as the dataset
-- Run the program in python IDE
+* How to change the path 
+   * Change the path in GMM_implementation.py which is in line 127 to your local path to read the dataset
+   * Change the path in confidence_interval.py which is in line 65 to your local path to read the dataset
+   * Change the path in csci788_capstone.py which is in line 134 to your local path to read the dataset
+   * Change the path in lc_gridsearch.py which is in line 65 to your local path to read the dataset
+   * Change the path in lda_implementation.py which is in line 118 to your local path to read the dataset
+   * Change the path in read_articles.py which is in line 15 to your local path to read the dataset
+   * Change the path in svm_test_validation.py which is in line 62 to your local path to read the dataset
+* Be sure to download pdf_json.zip file which is the pdf format of the Kaggle dataset (Please visit https://drive.google.com/drive/u/1/folders/1x6OicUyOfWFYmTDulR_sV-mPsMuk70pR to download the dataset)
+* Download corpus_matrix.npy, body_all_text.npy, and word_feature_list.npy files and put them in the same path as the dataset (Please visit https://drive.google.com/drive/u/1/folders/1x6OicUyOfWFYmTDulR_sV-mPsMuk70pR to download the dataset)
+* Code explanations
+   * Using GMM_implementation.py to run the Gaussian mixture models algorithm
+   * Using confidence_interval.py to test the TF-IDF feature extraction approach
+   * Using lda_transform.py to test the LDA transformation feature extraction approach
+   * Using csci788_capstone.py to preprocess the Kaggle dataset and save the model
+   * Using lc_gridsearch.py to decide the best SVM classifier and find if there exists overfitting issues
+   * Using lda_implementation.py to run the LDA topic modeling algorithm and get the visualizations
+   * Using read_article.py to read papers in the Kaggle dataset and label papers accordingly
+   * Using svm_test_validation.py to predict the entire Kaggle dataset and give each paper the corresponding labels
 
 
 ## Release History
