@@ -34,6 +34,8 @@ This project is based on python environment, and the coding can be implemented v
    * Change the path in lda_implementation.py which is in line 118 to your local path to read the dataset
    * Change the path in read_articles.py which is in line 15 to your local path to read the dataset
    * Change the path in svm_test_validation.py which is in line 62 to your local path to read the dataset
+   * Change the path in Kaggle_nlp.py which is in line 127 to your local path to read the dataset, this is a relative directory and this file can run the whole project without running the above ones
+   
 * Be sure to download pdf_json.zip file which is the pdf format of the Kaggle dataset (Please visit https://drive.google.com/drive/u/1/folders/1x6OicUyOfWFYmTDulR_sV-mPsMuk70pR to download the dataset)
 * Download corpus_matrix.npy, body_all_text.npy, and word_feature_list.npy files and put them in the same path as the dataset (Please visit https://drive.google.com/drive/u/1/folders/1x6OicUyOfWFYmTDulR_sV-mPsMuk70pR to download the files)
 * Code explanations
@@ -68,6 +70,10 @@ This project is based on python environment, and the coding can be implemented v
    * Using svm_test_validation.py to predict the entire Kaggle dataset and give each paper the corresponding labels
    ```
    python svm_test_validation.py
+   ```
+   * Using Kaggle_nlp.py to run all the programs and functions
+   ```
+   python Kaggle_nlp.py
    ```
 
 ## Release History
