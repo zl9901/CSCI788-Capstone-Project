@@ -124,7 +124,7 @@ def preprocess_data():
     """
     walk through all the files under specific directory
     """
-    for dirname, _, filenames in os.walk('C:/PythonWorkspace/document_parses/pdf_json'):
+    for dirname, _, filenames in os.walk('./pdf_json'):
         for filename in filenames:
             #print(os.path.join(dirname, filename))
 
