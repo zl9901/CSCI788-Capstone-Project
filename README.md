@@ -38,14 +38,37 @@ This project is based on python environment, and the coding can be implemented v
 * Download corpus_matrix.npy, body_all_text.npy, and word_feature_list.npy files and put them in the same path as the dataset (Please visit https://drive.google.com/drive/u/1/folders/1x6OicUyOfWFYmTDulR_sV-mPsMuk70pR to download the files)
 * Code explanations
    * Using GMM_implementation.py to run the Gaussian mixture models algorithm
+   ```
+   python GMM_implementation.py
+   ```
    * Using confidence_interval.py to test the TF-IDF feature extraction approach
+   ```
+   python confidence_interval.py
+   ```
    * Using lda_transform.py to test the LDA transformation feature extraction approach
+   ```
+   python lda_transform.py
+   ```
    * Using csci788_capstone.py to preprocess the Kaggle dataset and save the model
+   ```
+   python csci788_capstone.py
+   ```
    * Using lc_gridsearch.py to decide the best SVM classifier and find if there exists overfitting issues
+   ```
+   python lc_gridsearch.py
+   ```
    * Using lda_implementation.py to run the LDA topic modeling algorithm and get the visualizations
+   ```
+   python lda_implementation.py
+   ```
    * Using read_article.py to read papers in the Kaggle dataset and label papers accordingly
+   ```
+   python read_article.py
+   ```
    * Using svm_test_validation.py to predict the entire Kaggle dataset and give each paper the corresponding labels
-
+   ```
+   python svm_test_validation.py
+   ```
 
 ## Release History
 
